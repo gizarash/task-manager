@@ -1,7 +1,12 @@
 package model
 
 type Todo struct {
-		Id    int
-		Title string
-		Done  bool
-	}
+	Id    int    `json:"id"`
+	Title string `json:"title"`
+	Done  bool   `json:"done"`
+}
+
+type Store struct {
+	CurrentId int    `json:"current_id"`
+	Todos     []Todo `json:"todos"`
+}
