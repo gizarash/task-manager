@@ -1,46 +1,24 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/gizarash/task-manager/internal/model"
+	"github.com/gizarash/task-manager/internal/store"
 )
 
 const storeFile = "store.json"
 
 func main() {
-	
-	file, err := os.OpenFile(storeFile, os.O_RDWR|os.O_CREATE, 0644)
+
+	store, err := store.New()
 	if err != nil {
-		fmt.Printf("Ошибка при открытии/создании файла %s: %s\n", storeFile, err)
-		return
-	}
-	defer file.Close()
-	
-	stat, err := file.Stat()
-	if err != nil {
-		fmt.Printf("Ошибка при получении информации о файле %s: %s\n", storeFile, err)
+		fmt.Println(err)
 		return
 	}
 
-	var store model.Store
-	if stat.Size() == 0 {
-		store.CurrentId = 1
-		store.Todos = []model.Todo{}
-	} else {
-		decoder := json.NewDecoder(file)
-		err := decoder.Decode(&store)
-		if err != nil {
-			fmt.Printf("Ошибка при декодировании файла %s: %s\n", storeFile, err)
-			return
-		}
-	}
-	
 	changed := false
 	if len(os.Args) > 1 {
 		command := os.Args[1]
@@ -53,8 +31,7 @@ func main() {
 			if value == "" {
 				fmt.Println("Добавляемое значение не может быть пустым")
 			} else {
-				store.Todos = append(store.Todos, model.Todo{Id: store.CurrentId, Title: value, Done: false})
-				store.CurrentId++
+				store.Add(value)
 				changed = true
 				fmt.Printf("Значение \"%s\" добавлено в список\n", value)
 			}
@@ -79,18 +56,11 @@ func main() {
 					fmt.Printf("Необходимо передать id, вы передали %s\n", value)
 					return
 				}
-				notFound := true
-				for i, t := range store.Todos {
-					if t.Id == id {
-						store.Todos[i].Done = true
-						fmt.Printf("Пункт \"%s\" помечен выполненным\n", t.Title)
-						notFound = false
-						changed = true
-						break
-					}
-				}
-				if notFound {
-					fmt.Printf("id \"%s\" не найден\n", value)
+				if ok := store.MarkDone(id); ok {
+					changed = true
+					fmt.Printf("Пункт с id = \"%d\" помечен выполненным\n", id)
+				} else {
+					fmt.Printf("Пункт с id = \"%d\" не найден или уже был отмечен выполненным ранее\n", id)
 				}
 			}
 		case "delete":
@@ -102,18 +72,11 @@ func main() {
 					fmt.Printf("Необходимо передать id, вы передали %s\n", value)
 					return
 				}
-				notFound := true
-				for i, t := range store.Todos {
-					if t.Id == id {
-						store.Todos = slices.Delete(store.Todos, i, i + 1)
-						notFound = false
-						changed = true
-						fmt.Printf("Пункт \"%s\" удален\n", t.Title)
-						break
-					}
-				}
-				if notFound {
-					fmt.Printf("id \"%s\" не найден\n", value)
+				if ok := store.Delete(id); ok {
+					changed = true
+					fmt.Printf("Пункт с id = \"%d\" удален\n", id)
+				} else {
+					fmt.Printf("id \"%d\" не найден\n", id)
 				}
 			}
 		default:
@@ -128,10 +91,7 @@ func main() {
 	}
 
 	if changed {
-		encoder := json.NewEncoder(file)
-		file.Truncate(0)
-		file.Seek(0, 0)
-		err = encoder.Encode(store)
+		err := store.Save()
 		if err != nil {
 			fmt.Printf("Ошибка при кодировании json в файл %s: %s\n", storeFile, err)
 		}

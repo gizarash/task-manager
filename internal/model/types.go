@@ -6,7 +6,6 @@ type Todo struct {
 	Done  bool   `json:"done"`
 }
 
-type Store struct {
-	CurrentId int    `json:"current_id"`
-	Todos     []Todo `json:"todos"`
+type Response struct {
+	Message string `json:"message"`
 }
