@@ -13,7 +13,7 @@ const storeFile = "store.json"
 
 func main() {
 
-	store, err := store.New()
+	store, err := store.New("store.json")
 	if err != nil {
 		fmt.Println(err)
 		return

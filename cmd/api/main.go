@@ -19,7 +19,7 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
-	store, err := store.New()
+	store, err := store.New("store.json")
 	if err != nil {
 		slog.Error("unable to initialise store", "error", err)
 		os.Exit(1)

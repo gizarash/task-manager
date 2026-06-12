@@ -9,24 +9,22 @@ import (
 	"github.com/gizarash/task-manager/internal/model"
 )
 
-const storeFile = "store.json"
-
 type Store struct {
 	CurrentId int          `json:"current_id"`
 	Todos     []model.Todo `json:"todos"`
 	filePath  string       `json:"-"`
 }
 
-func New() (*Store, error) {
-	file, err := os.OpenFile("store.json", os.O_RDWR|os.O_CREATE, 0644)
+func New(filePath string) (*Store, error) {
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("store: opening file %s from Load: %w", storeFile, err)
+		return nil, fmt.Errorf("store: opening file %s from Load: %w", filePath, err)
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("store: reading stats of file %s from Load: %w", storeFile, err)
+		return nil, fmt.Errorf("store: reading stats of file %s from Load: %w", filePath, err)
 	}
 
 	var store Store
@@ -37,10 +35,10 @@ func New() (*Store, error) {
 		decoder := json.NewDecoder(file)
 		err := decoder.Decode(&store)
 		if err != nil {
-			return nil, fmt.Errorf("store: decoding file %s from Load: %w", storeFile, err)
+			return nil, fmt.Errorf("store: decoding file %s from Load: %w", filePath, err)
 		}
 	}
-	store.filePath = storeFile
+	store.filePath = filePath
 
 	return &store, nil
 }
@@ -79,14 +77,14 @@ func (s *Store) List() []model.Todo {
 func (s *Store) Save() error {
 	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("store: opening file %s from Save: %w", storeFile, err)
+		return fmt.Errorf("store: opening file %s from Save: %w", s.filePath, err)
 	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(s)
 	if err != nil {
-		return fmt.Errorf("store: encoding json to file %s from Save: %w", storeFile, err)
+		return fmt.Errorf("store: encoding json to file %s from Save: %w", s.filePath, err)
 	}
 	return nil
 }
