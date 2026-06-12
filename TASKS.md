@@ -172,3 +172,29 @@ internal/
 Подсказка: `New()` сейчас привязан к файлу. Подумай, как создать `Store` в тесте без обращения к диску. Это небольшое изменение в `store.go`.
 
 ---
+
+## Этап 6: База данных (SQLite)
+
+Заменим JSON-файл на SQLite. Цель — познакомиться с `database/sql`, драйвером и миграциями.
+
+### Что изменится:
+
+* Добавится зависимость: `github.com/mattn/go-sqlite3` (CGO) или `modernc.org/sqlite` (pure Go, без CGO — проще на Windows)
+* `internal/store/store.go` — полная замена: вместо JSON-файла SQL-запросы
+* `internal/model/types.go` — без изменений
+* `cmd/cli/main.go` и `cmd/api/main.go` — без изменений (в этом суть хорошей архитектуры)
+
+### Требования к новому `store.go`:
+
+* `New(dsn string) (*Store, error)` — принимает путь к файлу БД
+* При первом запуске создаёт таблицу `todos` с полями `id`, `title`, `done`
+* `Add`, `MarkDone`, `Delete`, `List` — реализованы через SQL
+* `Save()` — становится no-op (SQL пишет сразу), но метод остаётся для совместимости
+
+Первый шаг: добавь зависимость:
+
+```
+go get modernc.org/sqlite
+```
+
+---
