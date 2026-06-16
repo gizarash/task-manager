@@ -13,7 +13,7 @@ const storeFile = "store.json"
 
 func main() {
 
-	store, err := store.New("store.json")
+	store, err := store.New("store.db")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -36,8 +36,8 @@ func main() {
 				fmt.Printf("Значение \"%s\" добавлено в список\n", value)
 			}
 		case "list":
-			if len(store.Todos) > 0 {
-				for _, t := range store.Todos {
+			if len(store.List()) > 0 {
+				for _, t := range store.List() {
 					doneFlag := " "
 					if t.Done {
 						doneFlag = "x"

@@ -1,90 +1,126 @@
 package store
 
 import (
-	"encoding/json"
+	"database/sql"
 	"fmt"
-	"os"
-	"slices"
 
 	"github.com/gizarash/task-manager/internal/model"
+	_ "modernc.org/sqlite"
 )
 
 type Store struct {
-	CurrentId int          `json:"current_id"`
-	Todos     []model.Todo `json:"todos"`
-	filePath  string       `json:"-"`
+	db *sql.DB `json:"-"`
 }
 
-func New(filePath string) (*Store, error) {
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0644)
+func New(dsn string) (*Store, error) {
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("store: opening file %s from Load: %w", filePath, err)
+		return nil, fmt.Errorf("store: opening database %s from New: %w", dsn, err)
 	}
-	defer file.Close()
 
-	stat, err := file.Stat()
+	err = db.Ping()
 	if err != nil {
-		return nil, fmt.Errorf("store: reading stats of file %s from Load: %w", filePath, err)
+		return nil, fmt.Errorf("store: pinging database %s from New: %w", dsn, err)
+	}
+
+	query := `
+    create table if not exists todos(
+        id integer primary key,
+        title text,
+        done boolean
+    );
+	`
+	_, err = db.Exec(query)
+
+	if err != nil {
+		return nil, fmt.Errorf("store: unable to create table todos from New: %w", err)
 	}
 
 	var store Store
-	if stat.Size() == 0 {
-		store.CurrentId = 1
-		store.Todos = []model.Todo{}
-	} else {
-		decoder := json.NewDecoder(file)
-		err := decoder.Decode(&store)
-		if err != nil {
-			return nil, fmt.Errorf("store: decoding file %s from Load: %w", filePath, err)
-		}
-	}
-	store.filePath = filePath
+	store.db = db
 
 	return &store, nil
 }
 
 func (s *Store) Add(title string) model.Todo {
-	var newTodo = model.Todo{Id: s.CurrentId, Title: title, Done: false}
-	s.Todos = append(s.Todos, newTodo)
-	s.CurrentId++
-	return newTodo
+	query := `
+		INSERT INTO todos (title, done) VALUES (?, ?)
+		RETURNING id, title, done;
+	`
+	var todo model.Todo
+
+	err := s.db.QueryRow(query, title, false).Scan(&todo.Id, &todo.Title, &todo.Done)
+	if err != nil {
+		return model.Todo{}
+	}
+
+	return todo
 }
 func (s *Store) MarkDone(id int) bool {
-	isChanged := false
-	for i, t := range s.Todos {
-		if t.Id == id && !s.Todos[i].Done {
-			s.Todos[i].Done = true
-			isChanged = true
-			break
-		}
+	query := `
+		update todos set done = ? 
+		where id = ? and done = ?
+	`
+	res, err := s.db.Exec(query, true, id, false)
+	if err != nil {
+		return false
 	}
-	return isChanged
+	count, err := res.RowsAffected()
+	if err != nil {
+		return false
+	}
+	if count == 0 {
+		return false
+	}
+	return true
 }
 func (s *Store) Delete(id int) bool {
-	isDeleted := false
-	for i, t := range s.Todos {
-		if t.Id == id {
-			s.Todos = slices.Delete(s.Todos, i, i+1)
-			isDeleted = true
-			break
-		}
+	query := `
+		delete from todos where id = ?
+	`
+	res, err := s.db.Exec(query, id)
+	if err != nil {
+		return false
 	}
-	return isDeleted
+	count, err := res.RowsAffected()
+	if err != nil {
+		return false
+	}
+	if count == 0 {
+		return false
+	}
+	return true
 }
 func (s *Store) List() []model.Todo {
-	return s.Todos
+	var todos []model.Todo
+
+	query := `
+		select id, title, done from todos
+	`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return todos
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var todo model.Todo
+		err := rows.Scan(&todo.Id, &todo.Title, &todo.Done)
+		if err != nil {
+			return todos
+		}
+		todos = append(todos, todo)
+	}
+
+	return todos
 }
 func (s *Store) Save() error {
-	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	return nil
+}
+func (s *Store) Close() error {
+	err := s.db.Close()
 	if err != nil {
-		return fmt.Errorf("store: opening file %s from Save: %w", s.filePath, err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(s)
-	if err != nil {
-		return fmt.Errorf("store: encoding json to file %s from Save: %w", s.filePath, err)
+		return fmt.Errorf("store: closing db connection from Save: %w", err)
 	}
 	return nil
 }

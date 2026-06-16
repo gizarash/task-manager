@@ -9,11 +9,14 @@ func NewTestStore(t *testing.T) *Store {
 	t.Helper()
 
 	tmpDir := t.TempDir()
-	tmpFile := filepath.Join(tmpDir, "test_store.json")
+	tmpFile := filepath.Join(tmpDir, "test_store.db")
 	s, err := New(tmpFile)
 	if err != nil {
 		t.Fatalf("unable to initialise store: %v", err)
 	}
+	t.Cleanup(func() {
+		s.Close()
+	})
 
 	return s
 }
