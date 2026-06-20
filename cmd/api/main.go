@@ -27,7 +27,6 @@ func main() {
 
 	mux.HandleFunc("GET /tasks", func(w http.ResponseWriter, r *http.Request) {
 		todos := store.List()
-		slog.Info(fmt.Sprintf("%s %s - returned %d records", r.Method, r.URL, len(todos)))
 		w.Header().Set("Content-Type", "application/json")
 		data := todos
 		w.WriteHeader(http.StatusOK)
@@ -54,7 +53,6 @@ func main() {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(errorData)
 		} else {
-			slog.Info(fmt.Sprintf("%s %s - record '%s' successfully added with id = %d", r.Method, r.URL, result.Title, result.Id))
 			data := model.Response{Message: fmt.Sprintf("record '%s' successfully added with id = %d", result.Title, result.Id)}
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(data)
@@ -82,7 +80,6 @@ func main() {
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(errorData)
 			} else {
-				slog.Info(fmt.Sprintf("%s %s - record with id = %d successfully marked as done", r.Method, r.URL, id))
 				data := model.Response{Message: fmt.Sprintf("record with id = %d successfully marked as done", id)}
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(data)
@@ -116,7 +113,6 @@ func main() {
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(errorData)
 			} else {
-				slog.Info(fmt.Sprintf("%s %s - record with id = %d successfully deleted", r.Method, r.URL, id))
 				data := model.Response{Message: fmt.Sprintf("record with id = %d successfully deleted", id)}
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(data)
@@ -129,9 +125,11 @@ func main() {
 		}
 	})
 
+	handler := LoggingMiddleware(mux)
+
 	s := &http.Server{
 		Addr:           ":8080",
-		Handler:        mux,
+		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
