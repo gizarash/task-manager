@@ -232,3 +232,35 @@ func LoggingMiddleware(next http.Handler) http.Handler
 Middleware можно положить в новый файл `cmd/api/middleware.go` (рядом с `main.go`).
 
 ---
+
+## Этап 8: Integration tests для HTTP API
+
+До этого ты тестировал только `store` — слой данных. Сейчас нужно протестировать HTTP-слой: что эндпоинты возвращают правильные статусы и тела ответов.
+
+### Задача:
+
+Написать integration tests для `cmd/api` используя `net/http/httptest`.
+
+### Требования:
+
+1. Новый файл `cmd/api/handlers_test.go`
+
+2. Вспомогательная функция `newTestServer(t *testing.T) *httptest.Server` — поднимает сервер с реальным `mux` и `LoggingMiddleware`, но с in-memory SQLite БД (DSN: `":memory:"`)
+
+3. Покрыть тестами все 4 эндпоинта
+
+* `GET /tasks` — возвращает `200` и пустой массив
+* `POST /tasks` — возвращает `201` при успехе; `400` при невалидном теле
+* `PATCH /tasks/{id}/done` — `200` при успехе; `404` для несуществующего id
+* `DELETE /tasks/{id}` — `200` при успехе; `404` для несуществующего id
+
+4. Тесты используют `t.Run` и изолированы (каждый тест — свой сервер через `newTestServer`)
+
+### Подсказки:
+
+* `httptest.NewServer(handler)` поднимает реальный HTTP сервер на случайном порту. 
+* Не забудь `defer ts.Close()`
+* Для отправки запросов используй стандартный `http.DefaultClient`
+DSN `":memory:"` — SQLite база прямо в памяти, не требует файла
+
+---
