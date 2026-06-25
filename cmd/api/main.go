@@ -15,8 +15,10 @@ import (
 )
 
 func main() {
+	cfg := NewConfig()
+	
 	mux := http.NewServeMux()
-	store, err := store.New("store.db")
+	store, err := store.New(cfg.DBPath)
 	if err != nil {
 		slog.Error("unable to initialise store", "error", err)
 		os.Exit(1)
@@ -36,7 +38,7 @@ func main() {
 	handler := LoggingMiddleware(mux)
 
 	s := &http.Server{
-		Addr:           ":8080",
+		Addr:           fmt.Sprintf(":%s", cfg.Port),
 		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -47,7 +49,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		slog.Info("starting server at port 8080...")
+		slog.Info(fmt.Sprintf("starting server at port %s...", cfg.Port))
 		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("unable to start server", "error", err)
 			os.Exit(1)
