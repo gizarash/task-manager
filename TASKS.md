@@ -264,3 +264,44 @@ Middleware можно положить в новый файл `cmd/api/middlewar
 DSN `":memory:"` — SQLite база прямо в памяти, не требует файла
 
 ---
+
+## Этап 9: Конфигурация через переменные окружения
+
+Сейчас порт и путь к БД захардкожены в `main.go`:
+```
+store.New("store.db")
+Addr: ":8080"
+```
+В реальных приложениях конфигурация передаётся извне — через env vars или флаги запуска.
+
+### Задача:
+
+Вынести конфигурацию в отдельную структуру и читать её из переменных окружения.
+
+### Требования:
+
+1. Новый файл cmd/api/config.go со структурой:
+```
+type Config struct {
+    Port   string
+    DBPath string
+}
+```
+
+2. Функция `NewConfig() Config` — читает значения из env vars:
+* `APP_PORT` → `Config.Port` (default: `"8080"`)
+* `APP_DB_PATH` → `Config.DBPath` (default: `"store.db"`)
+
+3. `main.go` использует `cfg := NewConfig()` вместо хардкода
+
+4. Никаких сторонних библиотек — только `os.Getenv`
+
+### Подсказки:
+
+Для чтения env var с fallback на дефолтное значение удобно написать маленькую вспомогательную функцию внутри `config.go`:
+
+```
+func getEnv(key, defaultValue string) string { ... }
+```
+
+---
